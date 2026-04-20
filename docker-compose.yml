@@ -1,0 +1,11 @@
+services:
+  db:
+    image: postgres:18
+    container_name: postgres_container
+    restart: always
+    environment:
+      - POSTGRES_PASSWORD=admin
+    volumes:
+      - ./docker/postgres:/var/lib/postgresql/18/docker
+    ports:
+      - '1234:5432'

@@ -1,0 +1,155 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CUSTOMER
+  ORGANIZER
+}
+
+enum TransactionStatus {
+  WAITING_PAYMENT
+  WAITING_ADMIN
+  DONE
+  REJECTED
+  EXPIRED
+  CANCELED
+}
+
+model User {
+  id             Int       @id @default(autoincrement())
+  email          String    @unique
+  password       String
+  name           String
+  role           Role      @default(CUSTOMER)
+  avatarUrl      String?
+  pointsBalance  Int       @default(0)
+  referralCode   String    @unique
+  referredById           Int?
+  appLockPin             String?
+  twoFactorEnabled       Boolean   @default(false)
+  twoFactorCode          String?
+  twoFactorCodeExpiresAt DateTime?
+  referredBy             User?     @relation("Referral", fields: [referredById], references: [id])
+  referrals      User[]    @relation("Referral")
+
+  events         Event[]
+  transactions   Transaction[]
+  reviews        Review[]
+  pointsHistory  PointHistory[]
+
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@map("users")
+}
+
+model PointHistory {
+  id          Int       @id @default(autoincrement())
+  userId      Int
+  amount      Int
+  type        String
+  expiredAt   DateTime?
+  createdAt   DateTime  @default(now())
+  user        User      @relation(fields: [userId], references: [id])
+
+  @@map("point_history")
+}
+
+model Event {
+  id             Int      @id @default(autoincrement())
+  organizerId    Int
+  organizer      User     @relation(fields: [organizerId], references: [id])
+  title          String
+  description    String
+  price          Int
+  startDate      DateTime
+  endDate        DateTime
+  location       String
+  category       String
+  availableSeats Int
+  totalSeats     Int
+
+  transactions   Transaction[]
+  reviews        Review[]
+  vouchers       Voucher[]
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("events")
+}
+
+model Transaction {
+  id              Int               @id @default(autoincrement())
+  userId          Int
+  eventId         Int
+  status          TransactionStatus @default(WAITING_PAYMENT)
+  qty             Int
+  totalPrice      Int
+  discountApplied Int               @default(0)
+  pointsUsed      Int               @default(0)
+  paymentProof    String?
+
+  user            User  @relation(fields: [userId], references: [id])
+  event           Event @relation(fields: [eventId], references: [id])
+
+  expiresAt       DateTime
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("transactions")
+}
+
+model Coupon {
+  id              Int      @id @default(autoincrement())
+  code            String   @unique
+  discountPercent Int
+  maxDiscount     Int?
+  expiresAt       DateTime
+  isActive        Boolean  @default(true)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("coupons")
+}
+
+model Voucher {
+  id             Int      @id @default(autoincrement())
+  eventId        Int
+  code           String   @unique
+  discountAmount Int
+  expiresAt      DateTime
+  isActive       Boolean  @default(true)
+
+  event          Event    @relation(fields: [eventId], references: [id])
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("vouchers")
+}
+
+model Review {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  eventId   Int
+  rating    Int
+  comment   String?
+
+  user      User     @relation(fields: [userId], references: [id])
+  event     Event    @relation(fields: [eventId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, eventId])
+  @@map("reviews")
+}
