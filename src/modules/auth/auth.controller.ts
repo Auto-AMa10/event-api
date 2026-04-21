@@ -1,24 +1,62 @@
-import { Request, Response, NextFunction } from "express";
+import { Request, Response } from "express";
+import { cookieOptions } from "../../config/cookie.js";
 import { AuthService } from "./auth.service.js";
 
 export class AuthController {
   constructor(private authService: AuthService) {}
 
-  register = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const data = await this.authService.register(req.body);
-      res.status(201).json({ message: "Registration success", data });
-    } catch (err) {
-      next(err);
-    }
+  register = async (req: Request, res: Response) => {
+    const result = await this.authService.register(req.body);
+    res.status(200).send(result);
   };
 
-  login = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const data = await this.authService.login(req.body);
-      res.status(200).json({ message: "Login success", data });
-    } catch (err) {
-      next(err);
-    }
+  login = async (req: Request, res: Response) => {
+    const { user, accessToken, refreshToken } = await this.authService.login(
+      req.body,
+    );
+
+    res.cookie("accessToken", accessToken, cookieOptions);
+    res.cookie("refreshToken", refreshToken, cookieOptions);
+
+    res.status(200).send({ user });
   };
+
+  logout = async (req: Request, res: Response) => {
+    const result = await this.authService.logout(req.cookies.refreshToken);
+
+    res.clearCookie("accessToken", cookieOptions);
+    res.clearCookie("refreshToken", cookieOptions);
+
+    res.status(200).send(result);
+  };
+
+  refresh = async (req: Request, res: Response) => {
+    const result = await this.authService.refresh(req.cookies.refreshToken);
+
+    res.cookie("accessToken", result.accessToken, cookieOptions);
+
+    res.status(200).send({ message: "Refresh success" });
+  };
+
+  forgotPassword = async (req: Request, res: Response) => {
+    const result = await this.authService.forgotPassword(req.body);
+    res.status(200).send(result);
+  };
+
+  resetPassword = async (req: Request, res: Response) => {
+    const userId = res.locals.user.id;
+    const result = await this.authService.resetPassword(req.body, userId);
+    res.status(200).send(result);
+  };
+
+  // google = async (req: Request, res: Response) => {
+  //   const { user, accessToken, refreshToken } = await this.authService.google(
+  //     req.body,
+  //   );
+
+  //   res.cookie("accessToken", accessToken, cookieOptions);
+  //   res.cookie("refreshToken", refreshToken, cookieOptions);
+
+  //   res.status(200).send({ user });
+  // };
 }

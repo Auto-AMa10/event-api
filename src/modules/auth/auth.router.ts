@@ -1,20 +1,57 @@
 import { Router } from "express";
+import { ValidationMiddleware } from "../../middlewares/validation.middleware.js";
 import { AuthController } from "./auth.controller.js";
+import { LoginDTO } from "./dto/login..dto.js";
+import { RegisterDTO } from "./dto/register.dto.js";
+import { ForgotPasswordDTO } from "./dto/forgot-password.dto.js";
+import { ResetPasswordDTO } from "./dto/reset-passworrd.dto.js";
+import { AuthMiddleware } from "../../middlewares/auth.middleware.js";
+import { GoogleDTO } from "./dto/google.dto.js";
 
 export class AuthRouter {
-  private router: Router;
+  router: Router;
 
-  constructor(private authController: AuthController) {
+  constructor(
+    private authController: AuthController,
+    private validationMiddleware: ValidationMiddleware,
+    private authMiddleware: AuthMiddleware,
+  ) {
     this.router = Router();
-    this.initializeRoutes();
+    this.initRoutes();
   }
 
-  private initializeRoutes() {
-    this.router.post("/register", this.authController.register);
-    this.router.post("/login", this.authController.login);
-  }
+  private initRoutes = () => {
+    this.router.post(
+      "/register",
+      this.validationMiddleware.validateBody(RegisterDTO),
+      this.authController.register,
+    );
+    this.router.post(
+      "/login",
+      this.validationMiddleware.validateBody(LoginDTO),
+      this.authController.login,
+    );
+    // this.router.post(
+    //   "/google",
+    //   this.validationMiddleware.validateBody(GoogleDTO),
+    //   this.authController.google,
+    // );
+    this.router.post("/logout", this.authController.logout);
+    this.router.post("/refresh", this.authController.refresh);
+    this.router.post(
+      "/forgot-password",
+      this.validationMiddleware.validateBody(ForgotPasswordDTO),
+      this.authController.forgotPassword,
+    );
+    this.router.post(
+      "/reset-password",
+      this.authMiddleware.verifyToken(process.env.JWT_SECRET_RESET!),
+      this.validationMiddleware.validateBody(ResetPasswordDTO),
+      this.authController.resetPassword,
+    );
+  };
 
-  public getRouter() {
+  getRouter = () => {
     return this.router;
-  }
+  };
 }
