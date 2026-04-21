@@ -16,6 +16,10 @@ import { UserRouter } from "./modules/user/user.router.js";
 import { globalError, notFoundError } from "./utils/errors.js";
 import path from "path";
 import { fileURLToPath } from "url";
+import { MailService } from "./modules/mail/templates/mail.service.js";
+import { AuthMiddleware } from "./middlewares/auth.middleware.js";
+import { ValidationMiddleware } from "./middlewares/validation.middleware.js";
+import { UploadMiddleware } from "./middlewares/upload.middleware.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -38,7 +42,8 @@ export class App {
 
   private registerModules() {
     // services
-    const authService = new AuthService(prisma);
+    const mailService = new MailService();
+    const authService = new AuthService(prisma, mailService);
     const eventService = new EventService(prisma);
     const transactionService = new TransactionService(prisma);
     const userService = new UserService(prisma);
@@ -49,8 +54,13 @@ export class App {
     const transactionController = new TransactionController(transactionService);
     const userController = new UserController(userService);
 
+    // middlewares
+    const authMiddleware = new AuthMiddleware();
+    const validationMiddleware = new ValidationMiddleware();
+    const uploadMiddleware = new UploadMiddleware();
+
     // routes
-    const authRouter = new AuthRouter(authController);
+    const authRouter = new AuthRouter(authController, validationMiddleware, authMiddleware);
     const eventRouter = new EventRouter(eventController);
     const transactionRouter = new TransactionRouter(transactionController);
     const userRouter = new UserRouter(userController);
