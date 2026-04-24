@@ -1,5 +1,7 @@
 import cors from "cors";
 import express, { Express } from "express";
+import "reflect-metadata";
+import cookieParser from "cookie-parser";
 import { prisma } from "./lib/prisma.js";
 import { AuthRouter } from "./modules/auth/auth.router.js";
 import { AuthController } from "./modules/auth/auth.controller.js";
@@ -20,6 +22,11 @@ import { MailService } from "./modules/mail/templates/mail.service.js";
 import { AuthMiddleware } from "./middlewares/auth.middleware.js";
 import { ValidationMiddleware } from "./middlewares/validation.middleware.js";
 import { UploadMiddleware } from "./middlewares/upload.middleware.js";
+import { metadata } from "reflect-metadata/no-conflict";
+import { CloudinaryService } from "./modules/cloudinary/cloudinary.service.js";
+import { CategoryService } from "./modules/category/category.service.js";
+import { CategoryController } from "./modules/category/category.controller.js";
+import { CategoryRouter } from "./modules/category/category.router.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -30,27 +37,31 @@ export class App {
   constructor() {
     this.app = express();
     this.configure();
+    this.app.use(cookieParser());
     this.registerModules();
     this.errors();
   }
 
   private configure() {
     this.app.use(cors());
-    this.app.use(express.json({ limit: '500mb' }));
-    this.app.use(express.urlencoded({ limit: '500mb', extended: true }));
+    this.app.use(express.json({ limit: "500mb" }));
+    this.app.use(express.urlencoded({ limit: "500mb", extended: true }));
   }
 
   private registerModules() {
     // services
     const mailService = new MailService();
+    const cloudinaryService = new CloudinaryService();
     const authService = new AuthService(prisma, mailService);
-    const eventService = new EventService(prisma);
+    const eventService = new EventService(prisma, cloudinaryService);
+    const categoryService = new CategoryService(prisma);
     const transactionService = new TransactionService(prisma);
     const userService = new UserService(prisma);
 
     // controllers
     const authController = new AuthController(authService);
     const eventController = new EventController(eventService);
+    const categoryController = new CategoryController(categoryService);
     const transactionController = new TransactionController(transactionService);
     const userController = new UserController(userService);
 
@@ -60,14 +71,28 @@ export class App {
     const uploadMiddleware = new UploadMiddleware();
 
     // routes
-    const authRouter = new AuthRouter(authController, validationMiddleware, authMiddleware);
-    const eventRouter = new EventRouter(eventController);
+    const authRouter = new AuthRouter(
+      authController,
+      validationMiddleware,
+      authMiddleware,
+    );
+    const eventRouter = new EventRouter(
+      eventController,
+      authMiddleware,
+      uploadMiddleware,
+      validationMiddleware,
+    );
+    const categoryRouter = new CategoryRouter(
+      categoryController,
+      validationMiddleware,
+    );
     const transactionRouter = new TransactionRouter(transactionController);
     const userRouter = new UserRouter(userController);
 
     // entry point
     this.app.use("/auth", authRouter.getRouter());
     this.app.use("/events", eventRouter.getRouter());
+    this.app.use("/category", categoryRouter.getRouter());
     this.app.use("/transactions", transactionRouter.getRouter());
     this.app.use("/users", userRouter.getRouter());
     this.app.use("/uploads", express.static("uploads"));

@@ -46,6 +46,7 @@ model User {
   referrals              User[]    @relation("Referral")
 
   events        Event[]
+  bookings      Booking[]
   refreshToken  RefreshToken[]
   transactions  Transaction[]
   reviews       Review[]
@@ -83,16 +84,22 @@ model PointHistory {
 }
 
 model Event {
-  id             Int      @id @default(autoincrement())
-  organizerId    Int
-  organizer      User     @relation(fields: [organizerId], references: [id])
-  title          String
-  description    String
-  price          Int
-  startDate      DateTime
-  endDate        DateTime
-  location       String
-  category       String
+  id          Int  @id @default(autoincrement())
+  organizerId Int
+  organizer   User @relation(fields: [organizerId], references: [id])
+
+  title       String   @unique
+  slug        String   @unique
+  description String
+  thumbnail   String?
+  price       Int
+  startDate   DateTime
+  endDate     DateTime
+  location    String
+
+  categoryId Int
+  category   Category @relation(fields: [categoryId], references: [id])
+
   availableSeats Int
   totalSeats     Int
 
@@ -100,10 +107,33 @@ model Event {
   reviews      Review[]
   vouchers     Voucher[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  bookings  Booking[]
 
   @@map("events")
+}
+
+model Category {
+  id     Int     @id @default(autoincrement())
+  name   String  @unique
+  slug   String  @unique
+  events Event[]
+
+  @@map("categories")
+}
+
+model Booking {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  eventId   Int
+  createdAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id])
+  event Event @relation(fields: [eventId], references: [id])
+
+  @@unique([userId, eventId])
+  @@map("bookings")
 }
 
 model Transaction {
