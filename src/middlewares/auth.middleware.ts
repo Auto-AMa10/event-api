@@ -6,6 +6,9 @@ import { Role } from "../generated/prisma/index.js";
 export class AuthMiddleware {
   verifyToken = (secretKey: string) => {
     return (req: Request, res: Response, next: NextFunction) => {
+      console.log("=== /events REQUEST ===");
+      console.log("COOKIES:", req.cookies);
+      console.log("HEADERS:", req.headers);
       let token: string | undefined;
 
       // kalo authBearerToken ada, masukin authBearerTokennya ke variable token
@@ -17,7 +20,7 @@ export class AuthMiddleware {
       // kalo variable token ga keisi, berarti coba isi variablenya dengan token
       // yg ada di cookie
       if (!token) {
-        token = req.cookies.accessToken;
+        token = req.cookies?.accessToken;
       }
 
       // kalo variable token ga keisi juga, berarti tokennya ga ada.
@@ -39,15 +42,19 @@ export class AuthMiddleware {
     };
   };
 
-  verifyRole = (roles: Role[]) => {
-    return (req: Request, res: Response, next: NextFunction) => {
-      const userRole = res.locals.user.role;
+verifyRole = (roles: Role[]) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const user = res.locals.user;
 
-      if (!userRole || !roles.includes(userRole)) {
-        throw new ApiError("You dont have access.", 403);
-      }
+    if (!user || !user.role) {
+      return next(new ApiError("Unauthorized", 401));
+    }
 
-      next();
-    };
+    if (!roles.includes(user.role)) {
+      return next(new ApiError("You dont have access.", 403));
+    }
+
+    next();
   };
+};
 }

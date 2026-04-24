@@ -1,18 +1,35 @@
 import { Request, Response, NextFunction } from "express";
 import { EventService } from "./event.service.js";
 import { AuthRequest } from "../../utils/auth-middleware.js";
+import { ApiError } from "../../utils/api-error.js";
+import { BookEventDTO } from "./dto/book-event.dto.js";
 
 export class EventController {
   constructor(private eventService: EventService) {}
 
-  createEvent = async (req: AuthRequest, res: Response, next: NextFunction) => {
-    try {
-      const event = await this.eventService.createEvent(req.body, req.user.id);
-      res.status(201).json({ message: "Event created successfully", data: event });
-    } catch (err) {
-      next(err);
-    }
+  createEvent = async (req: Request, res: Response) => {
+    // req.body
+    const data = req.body;
+
+    // thumbnail
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+    const thumbnail = files.thumbnail?.[0];
+    if (!thumbnail) throw new ApiError("thumbnail is required", 400);
+
+    // userId from payload token jwt
+    const userId = res.locals.user.id;
+
+    const result = await this.eventService.createEvent(data, thumbnail, userId);
+    res.status(200).send(result);
   };
+
+bookEvents = async (req: Request, res: Response) => {
+  const data: BookEventDTO = req.body;
+
+  const result = await this.eventService.bookEvent(data);
+
+  res.status(200).send(result);
+};
 
   getEvents = async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -23,9 +40,11 @@ export class EventController {
     }
   };
 
-  getEventById = async (req: Request, res: Response, next: NextFunction) => {
+  getEventBySlug = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const event = await this.eventService.getEventById(Number(req.params.id));
+      const event = await this.eventService.getEventByslug(
+        Number(req.params.id),
+      );
       res.status(200).json({ data: event });
     } catch (err) {
       next(err);
