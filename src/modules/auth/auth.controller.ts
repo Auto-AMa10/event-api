@@ -6,8 +6,13 @@ export class AuthController {
   constructor(private authService: AuthService) {}
 
   register = async (req: Request, res: Response) => {
-    const result = await this.authService.register(req.body);
-    res.status(200).send(result);
+    try {
+      const result = await this.authService.register(req.body);
+      res.status(200).send(result);
+    } catch (error) {
+      console.error("Registration error:", error);
+      throw error; // Let the global error handler catch it
+    }
   };
 
   login = async (req: Request, res: Response) => {
@@ -18,7 +23,7 @@ export class AuthController {
     res.cookie("accessToken", accessToken, cookieOptions);
     res.cookie("refreshToken", refreshToken, cookieOptions);
 
-    res.status(200).send({ user });
+    res.status(200).send({ data: { token: accessToken, user } });
   };
 
   logout = async (req: Request, res: Response) => {

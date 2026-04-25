@@ -7,10 +7,12 @@ export const globalError = (
   res: Response,
   next: NextFunction,
 ) => {
+  console.error("Internal Server Error:", err);
   const message = err.message || "Something went wrong!";
   const status = err.status || 500;
   res.status(status).send({ message });
 };
+
 
 export const notFoundError = (req: Request, res: Response) => {
   res.status(404).send({ message: "route not found" });

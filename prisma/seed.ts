@@ -10,10 +10,12 @@ async function main() {
   // ─── Clean up existing data ───────────────────────────────────────────────
   await prisma.review.deleteMany();
   await prisma.transaction.deleteMany();
+  await prisma.booking.deleteMany();
   await prisma.voucher.deleteMany();
   await prisma.coupon.deleteMany();
   await prisma.event.deleteMany();
   await prisma.pointHistory.deleteMany();
+  await prisma.refreshToken.deleteMany();
   await prisma.user.deleteMany();
 
   // ─── Passwords ────────────────────────────────────────────────────────────
@@ -44,7 +46,7 @@ async function main() {
 
   const customer1 = await prisma.user.create({
     data: {
-      email: "customer@loket.dev",
+      email: "customerservice@loket.Digital",
       password: hashedPassword,
       name: "Andi Wijaya",
       role: "CUSTOMER" as const,
@@ -55,7 +57,7 @@ async function main() {
 
   const customer2 = await prisma.user.create({
     data: {
-      email: "customer2@loket.dev",
+      email: "customerservice2@loket.Digital",
       password: hashedPassword,
       name: "Siti Nurhaliza",
       role: "CUSTOMER" as const,
@@ -104,15 +106,16 @@ async function main() {
 
   const event1 = await prisma.event.create({
     data: {
-      organizerId: organizer1.id,
+      organizer: { connect: { id: organizer1.id } },
       title: "Tech Summit Jakarta 2026",
+      slug: "tech-summit-jakarta-2026",
       description:
         "Konferensi teknologi terbesar di Indonesia! Bergabunglah dengan ribuan developer, startup founder, dan tech enthusiast. Hadirkan pembicara kelas dunia dari Google, Microsoft, dan perusahaan teknologi terkemuka. Jangan lewatkan workshop eksklusif, networking session, dan pameran produk terbaru.",
       price: 500000,
       startDate: nextWeek,
       endDate: new Date(nextWeek.getTime() + 2 * 24 * 60 * 60 * 1000),
       location: "Jakarta Convention Center, Jakarta",
-      category: "Technology",
+      category: { connectOrCreate: { where: { name: "Technology" }, create: { name: "Technology", slug: "technology" } } },
       availableSeats: 450,
       totalSeats: 500,
     },
@@ -120,15 +123,16 @@ async function main() {
 
   const event2 = await prisma.event.create({
     data: {
-      organizerId: organizer1.id,
+      organizer: { connect: { id: organizer1.id } },
       title: "Soundrenaline Music Festival",
+      slug: "soundrenaline-music-festival",
       description:
         "Festival musik terbesar di Asia Tenggara kembali hadir! Nikmati penampilan dari 50+ artis lokal dan internasional selama 3 hari penuh. Genre: Rock, Pop, Electronic, Jazz. Tersedia VIP area, food court premium, dan merchandise eksklusif.",
       price: 350000,
       startDate: nextMonth,
       endDate: new Date(nextMonth.getTime() + 3 * 24 * 60 * 60 * 1000),
       location: "GBK Senayan, Jakarta",
-      category: "Music",
+      category: { connectOrCreate: { where: { name: "Music" }, create: { name: "Music", slug: "music" } } },
       availableSeats: 7500,
       totalSeats: 8000,
     },
@@ -136,15 +140,16 @@ async function main() {
 
   const event3 = await prisma.event.create({
     data: {
-      organizerId: organizer2.id,
+      organizer: { connect: { id: organizer2.id } },
       title: "Bali International Business Forum",
+      slug: "bali-international-business-forum",
       description:
         "Forum bisnis internasional yang menghubungkan pengusaha dari seluruh dunia. Topik utama: Sustainable Business, Digital Transformation, dan ASEAN Market Opportunities. Networking dinner eksklusif dengan 200+ CEO dan investor.",
       price: 1500000,
       startDate: twoMonths,
       endDate: new Date(twoMonths.getTime() + 2 * 24 * 60 * 60 * 1000),
       location: "Nusa Dua Convention Center, Bali",
-      category: "Business",
+      category: { connectOrCreate: { where: { name: "Business" }, create: { name: "Business", slug: "business" } } },
       availableSeats: 200,
       totalSeats: 200,
     },
@@ -152,15 +157,16 @@ async function main() {
 
   const event4 = await prisma.event.create({
     data: {
-      organizerId: organizer2.id,
+      organizer: { connect: { id: organizer2.id } },
       title: "Jakarta Marathon 2026",
+      slug: "jakarta-marathon-2026",
       description:
         "Maraton internasional tahunan Jakarta! Tersedia kategori: Full Marathon (42km), Half Marathon (21km), Fun Run (5km). Rute melewati ikon-ikon bersejarah Jakarta. Semua finisher mendapatkan medali dan sertifikat digital.",
       price: 250000,
       startDate: new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000),
       endDate: new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000),
       location: "Monas, Jakarta",
-      category: "Sports",
+      category: { connectOrCreate: { where: { name: "Sports" }, create: { name: "Sports", slug: "sports" } } },
       availableSeats: 1990,
       totalSeats: 2000,
     },
@@ -168,15 +174,16 @@ async function main() {
 
   const event5 = await prisma.event.create({
     data: {
-      organizerId: organizer1.id,
+      organizer: { connect: { id: organizer1.id } },
       title: "UI/UX Design Bootcamp",
+      slug: "ui-ux-design-bootcamp",
       description:
         "Bootcamp intensif 2 hari untuk menjadi UI/UX Designer profesional. Materi: Design Thinking, Figma Advanced, User Research, dan Portfolio Building. Mentor dari perusahaan top: Tokopedia, Gojek, Traveloka. Sertifikat diakui industri.",
-      price: 0,
+      price: 150000,
       startDate: new Date(now.getTime() + 5 * 24 * 60 * 60 * 1000),
       endDate: new Date(now.getTime() + 6 * 24 * 60 * 60 * 1000),
       location: "Online (Zoom)",
-      category: "Technology",
+      category: { connectOrCreate: { where: { name: "Technology" }, create: { name: "Technology", slug: "technology" } } },
       availableSeats: 300,
       totalSeats: 300,
     },
@@ -184,15 +191,16 @@ async function main() {
 
   const event6 = await prisma.event.create({
     data: {
-      organizerId: organizer2.id,
+      organizer: { connect: { id: organizer2.id } },
       title: "Artificial Intelligence Summit 2026",
+      slug: "artificial-intelligence-summit-2026",
       description:
         "Jelajahi masa depan AI bersama pakar industri dari Google DeepMind dan OpenAI. Seminar satu hari penuh yang membahas implementasi Agentic AI, Generative Models, dan penerapannya di dunia nyata.",
       price: 750000,
       startDate: new Date(now.getTime() + 1 * 24 * 60 * 60 * 1000), // Besok!
       endDate: new Date(now.getTime() + 1 * 24 * 60 * 60 * 1000),
       location: "Grand Hyatt, Jakarta",
-      category: "Technology",
+      category: { connectOrCreate: { where: { name: "Technology" }, create: { name: "Technology", slug: "technology" } } },
       availableSeats: 50,
       totalSeats: 150,
     },

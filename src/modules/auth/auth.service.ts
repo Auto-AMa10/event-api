@@ -2,7 +2,7 @@ import { hash, verify } from "argon2";
 import jwt from "jsonwebtoken";
 import { PrismaClient, Role } from "../../generated/prisma/index.js";
 import { ApiError } from "../../utils/api-error.js";
-import crypto, { argon2 } from "crypto";
+import crypto from "crypto";
 import {
   EXPIRED_7_DAY,
   EXPIRED_ACCESS_TOKEN_JWT,
@@ -96,7 +96,8 @@ export class AuthService {
         });
       }
 
-      return user;
+      const { password: _password, ...userWithoutPassword } = user;
+      return userWithoutPassword;
     });
   }
 
