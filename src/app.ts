@@ -43,7 +43,14 @@ export class App {
   }
 
   private configure() {
-    this.app.use(cors());
+    this.app.use(
+      cors({
+        origin: [
+          process.env.BASE_URL_FE || "http://localhost:5173",  
+        ],  
+        credentials: true,
+      }),
+    );
     this.app.use(express.json({ limit: "500mb" }));
     this.app.use(express.urlencoded({ limit: "500mb", extended: true }));
   }

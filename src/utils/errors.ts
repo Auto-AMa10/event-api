@@ -16,4 +16,4 @@ export const globalError = (
 
 export const notFoundError = (req: Request, res: Response) => {
   res.status(404).send({ message: "route not found" });
-};
+}; 

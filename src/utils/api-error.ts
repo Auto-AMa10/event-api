@@ -5,4 +5,4 @@ export class ApiError extends Error {
     super(message);
     this.status = status;
   }
-}
+} 

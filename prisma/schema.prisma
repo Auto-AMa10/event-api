@@ -8,52 +8,31 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Role {
-  CUSTOMER
-  ORGANIZER
-}
-
-enum Provider {
-  CREDENTIALS
-  GOOGLE
-}
-
-enum TransactionStatus {
-  WAITING_PAYMENT
-  WAITING_ADMIN
-  DONE
-  REJECTED
-  EXPIRED
-  CANCELED
-}
-
 model User {
-  id                     Int       @id @default(autoincrement())
-  email                  String    @unique
+  id                     Int            @id @default(autoincrement())
+  email                  String         @unique
   password               String
   name                   String
-  role                   Role      @default(CUSTOMER)
-  provider               Provider  @default(CREDENTIALS)
+  role                   Role           @default(CUSTOMER)
   avatarUrl              String?
-  pointsBalance          Int       @default(0)
-  referralCode           String    @unique
+  pointsBalance          Int            @default(0)
+  referralCode           String         @unique
   referredById           Int?
   appLockPin             String?
-  twoFactorEnabled       Boolean   @default(false)
+  twoFactorEnabled       Boolean        @default(false)
   twoFactorCode          String?
   twoFactorCodeExpiresAt DateTime?
-  referredBy             User?     @relation("Referral", fields: [referredById], references: [id])
-  referrals              User[]    @relation("Referral")
-
-  events        Event[]
-  bookings      Booking[]
-  refreshToken  RefreshToken[]
-  transactions  Transaction[]
-  reviews       Review[]
-  pointsHistory PointHistory[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt              DateTime       @default(now())
+  updatedAt              DateTime       @updatedAt
+  provider               Provider       @default(CREDENTIALS)
+  bookings               Booking[]
+  events                 Event[]
+  pointsHistory          PointHistory[]
+  refreshToken           RefreshToken?
+  reviews                Review[]
+  transactions           Transaction[]
+  referredBy             User?          @relation("Referral", fields: [referredById], references: [id])
+  referrals              User[]         @relation("Referral")
 
   @@map("users")
 }
@@ -65,8 +44,7 @@ model RefreshToken {
   expiredAt DateTime
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
 
   @@map("refresh_tokens")
 }
@@ -84,32 +62,27 @@ model PointHistory {
 }
 
 model Event {
-  id          Int  @id @default(autoincrement())
-  organizerId Int
-  organizer   User @relation(fields: [organizerId], references: [id])
-
-  title       String   @unique
-  slug        String   @unique
-  description String
-  thumbnail   String?
-  price       Int
-  startDate   DateTime
-  endDate     DateTime
-  location    String
-
-  categoryId Int
-  category   Category @relation(fields: [categoryId], references: [id])
-
+  id             Int           @id @default(autoincrement())
+  organizerId    Int
+  title          String        @unique
+  description    String
+  price          Int
+  startDate      DateTime
+  endDate        DateTime
+  location       String
   availableSeats Int
   totalSeats     Int
-
-  transactions Transaction[]
-  reviews      Review[]
-  vouchers     Voucher[]
-
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  bookings  Booking[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  categoryId     Int
+  slug           String        @unique
+  thumbnail      String?
+  bookings       Booking[]
+  category       Category      @relation(fields: [categoryId], references: [id])
+  organizer      User          @relation(fields: [organizerId], references: [id])
+  reviews        Review[]
+  transactions   Transaction[]
+  vouchers       Voucher[]
 
   @@map("events")
 }
@@ -128,9 +101,8 @@ model Booking {
   userId    Int
   eventId   Int
   createdAt DateTime @default(now())
-
-  user  User  @relation(fields: [userId], references: [id])
-  event Event @relation(fields: [eventId], references: [id])
+  event     Event    @relation(fields: [eventId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
 
   @@unique([userId, eventId])
   @@map("bookings")
@@ -146,13 +118,11 @@ model Transaction {
   discountApplied Int               @default(0)
   pointsUsed      Int               @default(0)
   paymentProof    String?
-
-  user  User  @relation(fields: [userId], references: [id])
-  event Event @relation(fields: [eventId], references: [id])
-
-  expiresAt DateTime
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  expiresAt       DateTime
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  event           Event             @relation(fields: [eventId], references: [id])
+  user            User              @relation(fields: [userId], references: [id])
 
   @@map("transactions")
 }
@@ -164,9 +134,8 @@ model Coupon {
   maxDiscount     Int?
   expiresAt       DateTime
   isActive        Boolean  @default(true)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   @@map("coupons")
 }
@@ -178,28 +147,43 @@ model Voucher {
   discountAmount Int
   expiresAt      DateTime
   isActive       Boolean  @default(true)
-
-  event Event @relation(fields: [eventId], references: [id])
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  event          Event    @relation(fields: [eventId], references: [id])
 
   @@map("vouchers")
 }
 
 model Review {
-  id      Int     @id @default(autoincrement())
-  userId  Int
-  eventId Int
-  rating  Int
-  comment String?
-
-  user  User  @relation(fields: [userId], references: [id])
-  event Event @relation(fields: [eventId], references: [id])
-
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  eventId   Int
+  rating    Int
+  comment   String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  event     Event    @relation(fields: [eventId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
 
   @@unique([userId, eventId])
   @@map("reviews")
+}
+
+enum Role {
+  CUSTOMER
+  ORGANIZER
+}
+
+enum Provider {
+  CREDENTIALS
+  GOOGLE
+}
+
+enum TransactionStatus {
+  WAITING_PAYMENT
+  WAITING_ADMIN
+  DONE
+  REJECTED
+  EXPIRED
+  CANCELED
 }
