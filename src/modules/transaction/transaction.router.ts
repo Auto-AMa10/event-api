@@ -47,6 +47,13 @@ export class TransactionRouter {
       this.authMiddleware.verifyToken(process.env.JWT_SECRET!),
       this.transactionController.getTransactionById,
     );
+    this.router.get("/my", authMiddleware, this.transactionController.getMyTransactions);
+    this.router.get("/pending-organizer", authMiddleware, organizerMiddleware, this.transactionController.getPendingForOrganizer);
+    this.router.get("/:id", authMiddleware, this.transactionController.getById);
+    this.router.post("/checkout", authMiddleware, this.transactionController.checkout);
+    this.router.put("/:id/proof", authMiddleware, this.transactionController.uploadProof);
+    this.router.put("/:id/status", authMiddleware, organizerMiddleware, this.transactionController.processTransaction);
+    this.router.delete("/:id", authMiddleware, this.transactionController.delete);
   }
 
   public getRouter() {

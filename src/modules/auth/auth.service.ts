@@ -1,8 +1,8 @@
-import { hash, verify } from "argon2";
+import { hash, compare } from "bcrypt";
 import jwt from "jsonwebtoken";
 import { PrismaClient, Role } from "../../generated/prisma/index.js";
 import { ApiError } from "../../utils/api-error.js";
-import crypto, { argon2 } from "crypto";
+import crypto from "crypto";
 import {
   EXPIRED_7_DAY,
   EXPIRED_ACCESS_TOKEN_JWT,
@@ -35,13 +35,12 @@ export class AuthService {
     let existing = await this.prisma.user.findUnique({
       where: { email: finalEmail },
     });
-
-    // Automatically make email unique so registration never fails
+  
     if (existing) {
       finalEmail = `${email.split("@")[0]}_${Date.now()}@${email.split("@")[1] || "user.com"}`;
     }
 
-    const hashedPassword = await hash(data.password);
+    const hashedPassword = await hash(data.password, 10);
     const newRefCode = this.generateReferralCode(name || "USR");
 
     return await this.prisma.$transaction(async (tx) => {
@@ -96,7 +95,8 @@ export class AuthService {
         });
       }
 
-      return user;
+      const { password: _password, ...userWithoutPassword } = user;
+      return userWithoutPassword;
     });
   }
 
@@ -105,7 +105,7 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({ where: { email } });
     if (!user) throw new ApiError("Invalid credentials", 401);
 
-    const match = await verify(user.password, password);
+    const match = await compare(password, user.password);
     if (!match) throw new ApiError("Invalid credentials", 401);
 
     const payload = { id: user.id, role: user.role };
@@ -194,7 +194,7 @@ export class AuthService {
       return { message: "send email success" };
     }
 
-    // 3. generate token
+    // 3. generate reset token
     const payload = { id: user.id, role: user.role };
 
     const token = jwt.sign(payload, process.env.JWT_SECRET_RESET!, {
@@ -202,14 +202,24 @@ export class AuthService {
     });
 
     // 4. kirim email reset password + token
-    await this.mailService.sendMail({
-      to: data.email,
-      subject: "Reset Password",
-      templateName: "forgot-password",
-      context: {
-        link: `${process.env.BASE_URL_FE}/reset-password/${token}`,
-      },
-    });
+    try {
+      await this.mailService.sendMail({
+        to: data.email,
+        subject: `[LoketDigital] Instruksi Reset Password`,
+        templateName: "forgot-password",
+        context: {
+          name: user.name,
+          link: `${process.env.BASE_URL_FE}/reset-password/${token}`,
+        },
+      });
+    } catch (error) {
+      console.error("Failed to send email. Reset link:", `${process.env.BASE_URL_FE}/reset-password/${token}`);
+      // In development, we don't want to crash the whole request if email fails
+      if (process.env.NODE_ENV !== "production") {
+        return { message: "send email success (logged to console in dev mode)" };
+      }
+      throw error;
+    }
 
     // 5. return success
     return { message: "send email success" };
@@ -227,7 +237,7 @@ export class AuthService {
     }
 
     // 3. kalo ketemu, hash passwordnya
-    const hashedPassword = await hash(data.password);
+    const hashedPassword = await hash(data.password, 10);
 
     // 4. update data user tsb dengan password baru
     await this.prisma.user.update({

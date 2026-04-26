@@ -86,4 +86,21 @@ export class TransactionController {
       next(err);
     }
   };
+
+  getPendingForOrganizer = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+      const transactions = await this.transactionService.getPendingForOrganizer(Number(req.user.id));
+      res.status(200).json({ data: transactions });
+    } catch (err) {
+      next(err);
+    }
+  };
+  delete = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+      await this.transactionService.deleteTransaction(Number(req.params.id), Number(req.user.id));
+      res.status(200).json({ message: "Transaction deleted permanently" });
+    } catch (err) {
+      next(err);
+    }
+  };
 }

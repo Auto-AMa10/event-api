@@ -7,7 +7,7 @@ export class UserController {
 
   updateProfile = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
-      const user = await this.userService.updateProfile(res.locals.user.id, req.body);
+      const user = await this.userService.updateProfile(Number(req.user.id), req.body);
       res.status(200).json({ message: "Profile updated successfully", data: user });
     } catch (err) {
       next(err);
@@ -16,10 +16,11 @@ export class UserController {
 
   changePassword = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
-      const result = await this.userService.changePassword(res.locals.user.id, req.body);
+      const result = await this.userService.changePassword(Number(req.user.id), req.body);
       res.status(200).json(result);
     } catch (err) {
-      next(err);
+      next(err); 
     }
   };
+  
 }

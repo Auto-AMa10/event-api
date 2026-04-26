@@ -22,6 +22,12 @@ export class EventRouter {
 
   private initializeRoutes() {
     this.router.get("/", this.eventController.getEvents);
+    this.router.get(
+      "/dashboard/stats",
+      this.authMiddleware.verifyToken(process.env.JWT_SECRET!),
+      this.authMiddleware.verifyRole(["ORGANIZER"]),
+      this.eventController.getDashboardStats,
+    );
     this.router.get("/:id", this.eventController.getEventBySlug);
     this.router.post(
       "/",

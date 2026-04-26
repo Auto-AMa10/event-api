@@ -18,10 +18,29 @@ export class EventController {
     if (!thumbnail) throw new ApiError("thumbnail is required", 400);
 
     // userId from payload token jwt
-    const userId = res.locals.user.id;
+    const userId = Number(res.locals.user.id);
 
     const result = await this.eventService.createEvent(data, thumbnail, userId);
     res.status(200).send(result);
+  };
+
+bookEvents = async (req: Request, res: Response) => {
+  const data: BookEventDTO = req.body;
+  const userId = Number(res.locals.user.id);
+
+  const result = await this.eventService.bookEvent(data, userId);
+
+  res.status(200).send(result);
+};
+
+  getDashboardStats = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = Number(res.locals.user.id);
+      const stats = await this.eventService.getDashboardStats(userId);
+      res.status(200).json({ data: stats });
+    } catch (err) {
+      next(err);
+    }
   };
 
   getEvents = async (req: Request, res: Response, next: NextFunction) => {
@@ -42,7 +61,7 @@ export class EventController {
   getEventBySlug = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const event = await this.eventService.getEventByslug(
-        Number(req.params.id),
+        req.params.id as string,
       );
       res.status(200).json({ data: event });
     } catch (err) {

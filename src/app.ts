@@ -22,7 +22,7 @@ import { MailService } from "./modules/mail/templates/mail.service.js";
 import { AuthMiddleware } from "./middlewares/auth.middleware.js";
 import { ValidationMiddleware } from "./middlewares/validation.middleware.js";
 import { UploadMiddleware } from "./middlewares/upload.middleware.js";
-import { metadata } from "reflect-metadata/no-conflict";
+
 import { CloudinaryService } from "./modules/cloudinary/cloudinary.service.js";
 import { CategoryService } from "./modules/category/category.service.js";
 import { CategoryController } from "./modules/category/category.controller.js";
@@ -48,7 +48,9 @@ export class App {
   private configure() {
     this.app.use(
       cors({
-        origin: process.env.BASE_URL_FE,
+        origin: [
+          process.env.BASE_URL_FE || "http://localhost:5173",  
+        ],  
         credentials: true,
       }),
     );

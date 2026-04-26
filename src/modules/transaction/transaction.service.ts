@@ -124,16 +124,29 @@ export class TransactionService {
     if (!tx || tx.userId !== userId)
       throw new ApiError("Transaction not found", 404);
 
-    if (tx.status !== TransactionStatus.WAITING_PAYMENT)
-      throw new ApiError("Cannot upload proof at this state", 400);
-
-    return this.prisma.transaction.update({
+    const updatedTx = await this.prisma.transaction.update({
       where: { id },
       data: {
         paymentProof,
         status: TransactionStatus.WAITING_ADMIN,
       },
     });
+
+    // --- AUTO-ACCEPT BOT ---
+    // Automatically approve after 5 seconds to simulate processing
+    setTimeout(async () => {
+      try {
+        await this.prisma.transaction.update({
+          where: { id },
+          data: { status: TransactionStatus.DONE }
+        });
+        console.log(`[Auto-Accept] Transaction ID ${id} has been automatically approved.`);
+      } catch (err) {
+        console.error(`[Auto-Accept] Failed to auto-approve ID ${id}:`, err);
+      }
+    }, 5000);
+
+    return updatedTx;
   }
 
   async processStatus(
@@ -199,7 +212,36 @@ export class TransactionService {
   }
 
   async getMyTransactions(userId: number) {
-    return this.prisma.transaction.findMany({
+    // 1. Find expired transactions to restore resources before deleting
+    const expired = await this.prisma.transaction.findMany({
+      where: {
+        userId,
+        status: "WAITING_PAYMENT",
+        expiresAt: { lt: new Date() }
+      }
+    });
+
+    for (const tx of expired) {
+      await this.prisma.$transaction(async (prismaTx) => {
+        // Return seats
+        await prismaTx.event.update({
+          where: { id: tx.eventId },
+          data: { availableSeats: { increment: tx.qty } }
+        });
+        // Return points
+        if (tx.pointsUsed > 0) {
+          await prismaTx.user.update({
+            where: { id: tx.userId },
+            data: { pointsBalance: { increment: tx.pointsUsed } }
+          });
+        }
+        // Permanent Delete
+        await prismaTx.transaction.delete({ where: { id: tx.id } });
+      });
+    }
+
+    // 2. Return remaining valid transactions
+    return await this.prisma.transaction.findMany({
       where: { userId },
       include: { event: true },
       orderBy: { createdAt: "desc" },
@@ -217,5 +259,50 @@ export class TransactionService {
     }
 
     return tx;
+  }
+
+  async getPendingForOrganizer(organizerId: number) {
+    console.log("Fetching pending transactions for organizer:", organizerId);
+    return await this.prisma.transaction.findMany({
+      where: {
+        status: { in: [TransactionStatus.WAITING_ADMIN, TransactionStatus.DONE] },
+        event: { organizerId },
+      },
+      include: {
+        event: { select: { title: true } },
+        user: { select: { name: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+  }
+
+  async deleteTransaction(id: number, userId: number) {
+    return await this.prisma.$transaction(async (tx) => {
+      const transaction = await tx.transaction.findUnique({
+        where: { id },
+        include: { event: true }
+      });
+
+      if (!transaction || transaction.userId !== userId) {
+        throw new ApiError("Transaction not found", 404);
+      }
+
+      // If it was still active, restore seats and points
+      if (transaction.status === "WAITING_PAYMENT" || transaction.status === "WAITING_ADMIN") {
+        await tx.event.update({
+          where: { id: transaction.eventId },
+          data: { availableSeats: { increment: transaction.qty } }
+        });
+
+        if (transaction.pointsUsed > 0) {
+          await tx.user.update({
+            where: { id: transaction.userId },
+            data: { pointsBalance: { increment: transaction.pointsUsed } }
+          });
+        }
+      }
+
+      return await tx.transaction.delete({ where: { id } });
+    });
   }
 }
