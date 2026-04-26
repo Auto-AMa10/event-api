@@ -1,8 +1,9 @@
-import { Request, Response, NextFunction } from "express";
-import { EventService } from "./event.service.js";
-import { AuthRequest } from "../../utils/auth-middleware.js";
+import { NextFunction, Request, Response } from "express";
 import { ApiError } from "../../utils/api-error.js";
-import { BookEventDTO } from "./dto/book-event.dto.js";
+import { EventService } from "./event.service.js";
+import { plainToInstance } from "class-transformer";
+import { GetEventsDTO } from "./dto/get-events.dto.js";
+import { validateOrReject } from "class-validator";
 
 export class EventController {
   constructor(private eventService: EventService) {}
@@ -23,18 +24,16 @@ export class EventController {
     res.status(200).send(result);
   };
 
-bookEvents = async (req: Request, res: Response) => {
-  const data: BookEventDTO = req.body;
-
-  const result = await this.eventService.bookEvent(data);
-
-  res.status(200).send(result);
-};
-
   getEvents = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const events = await this.eventService.getEvents(req.query);
-      res.status(200).json({ data: events });
+      const dto = plainToInstance(GetEventsDTO, req.query);
+      await validateOrReject(dto);
+      const events = await this.eventService.getEvents(dto);
+
+      res.status(200).json({
+        message: "Events fetched",
+        data: events,
+      });
     } catch (err) {
       next(err);
     }

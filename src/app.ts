@@ -27,6 +27,9 @@ import { CloudinaryService } from "./modules/cloudinary/cloudinary.service.js";
 import { CategoryService } from "./modules/category/category.service.js";
 import { CategoryController } from "./modules/category/category.controller.js";
 import { CategoryRouter } from "./modules/category/category.router.js";
+import { DashboardService } from "./modules/dashboard/dashboard.service.js";
+import { DashboardController } from "./modules/dashboard/dashboard.controller.js";
+import { DashboardRouter } from "./modules/dashboard/dashboard.router.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -43,11 +46,15 @@ export class App {
   }
 
   private configure() {
-    this.app.use(cors());
+    this.app.use(
+      cors({
+        origin: process.env.BASE_URL_FE,
+        credentials: true,
+      }),
+    );
     this.app.use(express.json({ limit: "500mb" }));
     this.app.use(express.urlencoded({ limit: "500mb", extended: true }));
   }
-
   private registerModules() {
     // services
     const mailService = new MailService();
@@ -55,6 +62,7 @@ export class App {
     const authService = new AuthService(prisma, mailService);
     const eventService = new EventService(prisma, cloudinaryService);
     const categoryService = new CategoryService(prisma);
+    const dashboardService = new DashboardService(prisma);
     const transactionService = new TransactionService(prisma);
     const userService = new UserService(prisma);
 
@@ -62,6 +70,7 @@ export class App {
     const authController = new AuthController(authService);
     const eventController = new EventController(eventService);
     const categoryController = new CategoryController(categoryService);
+    const dashboardController = new DashboardController(dashboardService);
     const transactionController = new TransactionController(transactionService);
     const userController = new UserController(userService);
 
@@ -86,13 +95,23 @@ export class App {
       categoryController,
       validationMiddleware,
     );
-    const transactionRouter = new TransactionRouter(transactionController);
+    const dashboardRouter = new DashboardRouter(
+      dashboardController,
+      authMiddleware,
+    );
+    const transactionRouter = new TransactionRouter(
+      transactionController,
+      authMiddleware,
+      validationMiddleware,
+      uploadMiddleware,
+    );
     const userRouter = new UserRouter(userController);
 
     // entry point
     this.app.use("/auth", authRouter.getRouter());
     this.app.use("/events", eventRouter.getRouter());
     this.app.use("/category", categoryRouter.getRouter());
+    this.app.use("/dashboard", dashboardRouter.getRouter());
     this.app.use("/transactions", transactionRouter.getRouter());
     this.app.use("/users", userRouter.getRouter());
     this.app.use("/uploads", express.static("uploads"));
@@ -106,7 +125,6 @@ export class App {
   start() {
     const PORT = process.env.PORT || 8000;
     this.app.listen(PORT, () => {
-      console.log(`Server running on port: ${PORT}`);
     });
   }
 }

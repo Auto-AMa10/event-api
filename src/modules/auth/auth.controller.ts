@@ -18,7 +18,7 @@ export class AuthController {
     res.cookie("accessToken", accessToken, cookieOptions);
     res.cookie("refreshToken", refreshToken, cookieOptions);
 
-    res.status(200).send({ user });
+    res.status(200).send({ user, accessToken, refreshToken });
   };
 
   logout = async (req: Request, res: Response) => {

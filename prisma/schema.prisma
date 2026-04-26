@@ -123,19 +123,6 @@ model Category {
   @@map("categories")
 }
 
-model Booking {
-  id        Int      @id @default(autoincrement())
-  userId    Int
-  eventId   Int
-  createdAt DateTime @default(now())
-
-  user  User  @relation(fields: [userId], references: [id])
-  event Event @relation(fields: [eventId], references: [id])
-
-  @@unique([userId, eventId])
-  @@map("bookings")
-}
-
 model Transaction {
   id              Int               @id @default(autoincrement())
   userId          Int
@@ -150,9 +137,10 @@ model Transaction {
   user  User  @relation(fields: [userId], references: [id])
   event Event @relation(fields: [eventId], references: [id])
 
-  expiresAt DateTime
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  organizerDeadline DateTime?
+  expiresAt         DateTime
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   @@map("transactions")
 }
@@ -194,12 +182,14 @@ model Review {
   rating  Int
   comment String?
 
-  user  User  @relation(fields: [userId], references: [id])
-  event Event @relation(fields: [eventId], references: [id])
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@unique([userId, eventId])
+  @@index([eventId])
+  @@index([userId])
   @@map("reviews")
 }

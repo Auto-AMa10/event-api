@@ -4,6 +4,7 @@ import { generateSlug } from "../../utils/generate-slug.js";
 import { CloudinaryService } from "../cloudinary/cloudinary.service.js";
 import { BookEventDTO } from "./dto/book-event.dto.js";
 import { CreateEventDTO } from "./dto/create-event.dto.js";
+import { GetEventsDTO } from "./dto/get-events.dto.js";
 
 export class EventService {
   constructor(
@@ -39,72 +40,96 @@ export class EventService {
     return { message: "Event Succsessfully created" };
   }
 
-async bookEvent(data: BookEventDTO, userId: number) {
-  // 1. Prevent duplicate booking 
-  const existing = await this.prisma.booking.findUnique({
-    where: {
-      userId_eventId: {
-        userId,
+  async bookEvent(data: BookEventDTO, userId: number) {
+    const existing = await this.prisma.booking.findUnique({
+      where: {
+        userId_eventId: {
+          userId,
+          eventId: data.eventId,
+        },
+      },
+    });
+
+    if (existing) {
+      throw new ApiError("You already booked this event", 400);
+    }
+
+    const event = await this.prisma.event.findUnique({
+      where: { id: data.eventId },
+    });
+
+    if (!event) {
+      throw new ApiError("Event not found", 404);
+    }
+
+    const updatedEvent = await this.prisma.event.updateMany({
+      where: {
+        id: data.eventId,
+        availableSeats: { gt: 0 },
+      },
+      data: {
+        availableSeats: {
+          decrement: 1,
+        },
+      },
+    });
+
+    if (updatedEvent.count === 0) {
+      throw new ApiError("No seats available", 400);
+    }
+
+    const expiresAt = new Date(Date.now() + 1000 * 60 * 15); // 15 min hold
+
+    await this.prisma.booking.create({
+      data: {
         eventId: data.eventId,
+        userId,
+        expiresAt,
+        status: "RESERVED",
       },
-    },
-  });
+    });
 
-  if (existing) {
-    throw new ApiError("You already booked this event", 400);
+    return { message: "Seat reserved. Complete payment within 15 minutes." };
   }
 
-  // 2. Atomically decrease seat ONLY if available
-  const updatedEvent = await this.prisma.event.updateMany({
-    where: {
-      id: data.eventId,
-      availableSeats: {
-        gt: 0,
-      },
-    },
-    data: {
-      availableSeats: {
-        decrement: 1,
-      },
-    },
-  });
+  async getEvents(query: GetEventsDTO) {
+    const { page, take, category, location, sortBy, sortOrder } = query;
 
-  // 3. If no seat updated → sold out
-  if (updatedEvent.count === 0) {
-    throw new ApiError("No seats available", 400);
-  }
+    const whereClause: any = {};
 
-  // 4. Create booking
-  await this.prisma.booking.create({
-    data: {
-      eventId: data.eventId,
-      userId,
-    },
-  });
-
-  return { message: "Ticket booked successfully" };
-}
-
-  async getEvents(query: any) {
-    const { search, category, location } = query;
-    const where: Prisma.EventWhereInput = {};
-
-    if (search) {
-      where.title = { contains: search as string };
-    }
+    // CATEGORY (relation filter)
     if (category) {
-      where.category = { equals: category as string };
-    }
-    if (location) {
-      where.location = { contains: location as string };
+      whereClause.category = {
+        is: {
+          slug: category, // or name
+        },
+      };
     }
 
-    return await this.prisma.event.findMany({
-      where,
+    // LOCATION (string filter)
+    if (location) {
+      whereClause.location = {
+        contains: location,
+        mode: "insensitive",
+      };
+    }
+
+    return this.prisma.event.findMany({
+      where: whereClause,
+      skip: (page - 1) * take,
+      take,
+      orderBy: sortBy
+        ? { [sortBy]: sortOrder || "desc" }
+        : { createdAt: "desc" },
       include: {
-        organizer: { select: { name: true, avatarUrl: true } },
+        organizer: {
+          select: {
+            name: true,
+            avatarUrl: true,
+          },
+        },
+        category: true,
       },
-      orderBy: { createdAt: "desc" }, // default ordering
     });
   }
 

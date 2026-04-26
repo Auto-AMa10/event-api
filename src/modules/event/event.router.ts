@@ -21,8 +21,8 @@ export class EventRouter {
   }
 
   private initializeRoutes() {
-    // this.router.get("/", this.eventController.getEvents);
-    // this.router.get("/:id", this.eventController.getEventById);
+    this.router.get("/", this.eventController.getEvents);
+    this.router.get("/:id", this.eventController.getEventBySlug);
     this.router.post(
       "/",
       this.authMiddleware.verifyToken(process.env.JWT_SECRET!),
@@ -32,12 +32,6 @@ export class EventRouter {
         .fields([{ name: "thumbnail", maxCount: 1 }]),
       this.validationMiddleware.validateBody(CreateEventDTO),
       this.eventController.createEvent,
-    );
-    this.router.post(
-      "/book",
-      this.authMiddleware.verifyToken(process.env.JWT_SECRET!),
-      this.validationMiddleware.validateBody(BookEventDTO),
-      this.eventController.bookEvents,
     );
   }
 
