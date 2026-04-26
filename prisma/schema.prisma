@@ -96,18 +96,6 @@ model Category {
   @@map("categories")
 }
 
-model Booking {
-  id        Int      @id @default(autoincrement())
-  userId    Int
-  eventId   Int
-  createdAt DateTime @default(now())
-  event     Event    @relation(fields: [eventId], references: [id])
-  user      User     @relation(fields: [userId], references: [id])
-
-  @@unique([userId, eventId])
-  @@map("bookings")
-}
-
 model Transaction {
   id              Int               @id @default(autoincrement())
   userId          Int
@@ -118,11 +106,14 @@ model Transaction {
   discountApplied Int               @default(0)
   pointsUsed      Int               @default(0)
   paymentProof    String?
-  expiresAt       DateTime
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-  event           Event             @relation(fields: [eventId], references: [id])
-  user            User              @relation(fields: [userId], references: [id])
+
+  user  User  @relation(fields: [userId], references: [id])
+  event Event @relation(fields: [eventId], references: [id])
+
+  organizerDeadline DateTime?
+  expiresAt         DateTime
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   @@map("transactions")
 }
@@ -155,17 +146,23 @@ model Voucher {
 }
 
 model Review {
-  id        Int      @id @default(autoincrement())
-  userId    Int
-  eventId   Int
-  rating    Int
-  comment   String?
+  id      Int     @id @default(autoincrement())
+  userId  Int
+  eventId Int
+  rating  Int
+  comment String?
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   event     Event    @relation(fields: [eventId], references: [id])
   user      User     @relation(fields: [userId], references: [id])
 
   @@unique([userId, eventId])
+  @@index([eventId])
+  @@index([userId])
   @@map("reviews")
 }
 

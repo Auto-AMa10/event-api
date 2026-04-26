@@ -39,12 +39,6 @@ export class EventRouter {
       this.validationMiddleware.validateBody(CreateEventDTO),
       this.eventController.createEvent,
     );
-    this.router.post(
-      "/book",
-      this.authMiddleware.verifyToken(process.env.JWT_SECRET!),
-      this.validationMiddleware.validateBody(BookEventDTO),
-      this.eventController.bookEvents,
-    );
   }
 
   public getRouter() {

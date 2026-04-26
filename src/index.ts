@@ -1,4 +1,5 @@
 import "dotenv/config";
+import "./jobs/transaction.cron.js";
 import { App } from "./app.js";
 
 
