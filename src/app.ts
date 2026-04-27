@@ -63,7 +63,7 @@ export class App {
     const eventService = new EventService(prisma, cloudinaryService);
     const categoryService = new CategoryService(prisma);
     const dashboardService = new DashboardService(prisma);
-    const transactionService = new TransactionService(prisma);
+    const transactionService = new TransactionService(prisma,cloudinaryService);
     const userService = new UserService(prisma);
 
     // controllers
@@ -122,9 +122,11 @@ export class App {
     this.app.use(notFoundError);
   }
 
-  start() {
-    const PORT = process.env.PORT || 8000;
-    this.app.listen(PORT, () => {
-    });
-  }
+start() {
+  const PORT = process.env.PORT || 8000;
+  this.app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
 }
+  }
+

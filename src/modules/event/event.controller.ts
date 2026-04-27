@@ -1,14 +1,16 @@
-import { NextFunction, Request, Response } from "express";
-import { ApiError } from "../../utils/api-error.js";
+import { Request, Response, NextFunction } from "express";
 import { EventService } from "./event.service.js";
+import { AuthRequest } from "../../utils/auth-middleware.js";
+import { ApiError } from "../../utils/api-error.js";
+import { BookEventDTO } from "./dto/book-event.dto.js";
 import { plainToInstance } from "class-transformer";
-import { GetEventsDTO } from "./dto/get-events.dto.js";
 import { validateOrReject } from "class-validator";
+import { GetEventsDTO } from "./dto/get-events.dto.js";
 
 export class EventController {
   constructor(private eventService: EventService) {}
 
-  createEvent = async (req: Request, res: Response) => {
+createEvent = async (req: Request, res: Response) => {
     // req.body
     const data = req.body;
 
@@ -18,12 +20,12 @@ export class EventController {
     if (!thumbnail) throw new ApiError("thumbnail is required", 400);
 
     // userId from payload token jwt
-    const userId = res.locals.user.id;
+    const userId = Number(res.locals.user.id);
 
     const result = await this.eventService.createEvent(data, thumbnail, userId);
     res.status(200).send(result);
   };
-
+  
   getEvents = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const dto = plainToInstance(GetEventsDTO, req.query);
@@ -34,6 +36,16 @@ export class EventController {
         message: "Events fetched",
         data: events,
       });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+    getDashboardStats = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = Number(res.locals.user.id);
+      const stats = await this.eventService.getDashboardStats(userId);
+      res.status(200).json({ data: stats });
     } catch (err) {
       next(err);
     }

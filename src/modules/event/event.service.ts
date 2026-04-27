@@ -40,56 +40,79 @@ export class EventService {
     return { message: "Event Succsessfully created" };
   }
 
-  async bookEvent(data: BookEventDTO, userId: number) {
-    const existing = await this.prisma.booking.findUnique({
+  async getDashboardStats(organizerId: number) {
+    const revenueAggregation = await this.prisma.transaction.aggregate({
+      _sum: { totalPrice: true },
+      where: { event: { organizerId }, status: "DONE" },
+    });
+    const totalRevenue = revenueAggregation._sum.totalPrice || 0;
+
+    const activeEvents = await this.prisma.event.count({
+      where: { organizerId, endDate: { gte: new Date() } },
+    });
+
+    const pendingTransactions = await this.prisma.transaction.count({
+      where: { event: { organizerId }, status: "WAITING_ADMIN" },
+    });
+
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const ticketsSoldAggregation = await this.prisma.transaction.aggregate({
+      _sum: { qty: true },
       where: {
-        userId_eventId: {
-          userId,
-          eventId: data.eventId,
-        },
+        event: { organizerId },
+        status: "DONE",
+        updatedAt: { gte: startOfDay },
       },
     });
+    const ticketsSoldToday = ticketsSoldAggregation._sum.qty || 0;
 
-    if (existing) {
-      throw new ApiError("You already booked this event", 400);
+    const pageViews = 5890; // Mocked page views for now
+
+    const chartData: { name: string; revenue: number; dateString: string }[] =
+      [];
+    const today = new Date();
+    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      chartData.push({
+        name: days[d.getDay()],
+        revenue: 0,
+        dateString: d.toISOString().split("T")[0],
+      });
     }
 
-    const event = await this.prisma.event.findUnique({
-      where: { id: data.eventId },
-    });
+    const pastWeekDate = new Date();
+    pastWeekDate.setDate(pastWeekDate.getDate() - 6);
+    pastWeekDate.setHours(0, 0, 0, 0);
 
-    if (!event) {
-      throw new ApiError("Event not found", 404);
-    }
-
-    const updatedEvent = await this.prisma.event.updateMany({
+    const txs = await this.prisma.transaction.findMany({
       where: {
-        id: data.eventId,
-        availableSeats: { gt: 0 },
+        event: { organizerId },
+        status: "DONE",
+        updatedAt: { gte: pastWeekDate },
       },
-      data: {
-        availableSeats: {
-          decrement: 1,
-        },
-      },
+      select: { totalPrice: true, updatedAt: true },
     });
 
-    if (updatedEvent.count === 0) {
-      throw new ApiError("No seats available", 400);
-    }
-
-    const expiresAt = new Date(Date.now() + 1000 * 60 * 15); // 15 min hold
-
-    await this.prisma.booking.create({
-      data: {
-        eventId: data.eventId,
-        userId,
-        expiresAt,
-        status: "RESERVED",
-      },
+    txs.forEach((tx) => {
+      const dateString = tx.updatedAt.toISOString().split("T")[0];
+      const match = chartData.find((c) => c.dateString === dateString);
+      if (match) {
+        match.revenue += tx.totalPrice;
+      }
     });
 
-    return { message: "Seat reserved. Complete payment within 15 minutes." };
+    return {
+      totalRevenue,
+      activeEvents,
+      pendingTransactions,
+      ticketsSoldToday,
+      pageViews,
+      chartData,
+    };
   }
 
   async getEvents(query: GetEventsDTO) {
