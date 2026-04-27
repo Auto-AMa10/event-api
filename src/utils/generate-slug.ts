@@ -5,4 +5,4 @@ export function generateSlug(text: string): string {
     .replace(/\s+/g, "-") // spasi jadi "-"
     .replace(/[^\w-]+/g, "") // hapus karakter aneh
     .replace(/--+/g, "-"); // replace multiple "-" jadi satu
-}
+} 

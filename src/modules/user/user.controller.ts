@@ -19,7 +19,8 @@ export class UserController {
       const result = await this.userService.changePassword(res.locals.user.id, req.body);
       res.status(200).json(result);
     } catch (err) {
-      next(err);
+      next(err); 
     }
   };
+  
 }

@@ -156,9 +156,10 @@ export class EventService {
     });
   }
 
-  async getEventByslug(id: number) {
+  async getEventByslug(idOrSlug: string | number) {
+    const isNumeric = !isNaN(Number(idOrSlug));
     const event = await this.prisma.event.findUnique({
-      where: { id },
+      where: isNumeric ? { id: Number(idOrSlug) } : { slug: String(idOrSlug) },
       include: {
         organizer: { select: { id: true, name: true, avatarUrl: true } },
       },

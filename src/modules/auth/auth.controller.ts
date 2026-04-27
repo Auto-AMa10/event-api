@@ -6,8 +6,13 @@ export class AuthController {
   constructor(private authService: AuthService) {}
 
   register = async (req: Request, res: Response) => {
-    const result = await this.authService.register(req.body);
-    res.status(200).send(result);
+    try {
+      const result = await this.authService.register(req.body);
+      res.status(200).send(result);
+    } catch (error) {
+      console.error("Registration error:", error);
+      throw error; // Let the global error handler catch it
+    }
   };
 
   login = async (req: Request, res: Response) => {

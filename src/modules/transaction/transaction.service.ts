@@ -20,6 +20,7 @@ export class TransactionService {
     if (qty <= 0) throw new ApiError("Invalid quantity", 400);
 
     return await this.prisma.$transaction(async (tx) => {
+      // 1. Get event
       const event = await tx.event.findUnique({ where: { id: eventId } });
       if (!event) throw new ApiError("Event not found", 404);
 
@@ -27,6 +28,12 @@ export class TransactionService {
         throw new ApiError("Not enough seats available", 400);
       }
 
+      // 2. Check seats
+      if (event.availableSeats < qty) {
+        throw new ApiError("Not enough seats available", 400);
+      }
+
+      // 3. Get user
       const user = await tx.user.findUnique({ where: { id: userId } });
       if (!user) throw new ApiError("User not found", 404);
 
@@ -34,8 +41,10 @@ export class TransactionService {
         throw new ApiError("Insufficient points", 400);
       }
 
+      // 5. Discounts
       let discountApplied = 0;
 
+      // coupon
       if (couponCode) {
         const coupon = await tx.coupon.findUnique({
           where: { code: couponCode },
@@ -48,6 +57,7 @@ export class TransactionService {
         }
       }
 
+      // voucher
       if (voucherCode) {
         const voucher = await tx.voucher.findUnique({
           where: { code: voucherCode },
@@ -115,13 +125,32 @@ export class TransactionService {
 
     const result = await this.cloudinaryService.upload(file);
 
-    return await this.prisma.transaction.update({
+    if (!tx || tx.userId !== userId)
+      throw new ApiError("Transaction not found", 404);
+
+    const updatedTx = await this.prisma.transaction.update({
       where: { id },
       data: {
         paymentProof: result.secure_url,
         status: TransactionStatus.WAITING_ADMIN,
       },
     });
+
+    // --- AUTO-ACCEPT BOT ---
+    // Automatically approve after 5 seconds to simulate processing
+    setTimeout(async () => {
+      try {
+        await this.prisma.transaction.update({
+          where: { id },
+          data: { status: TransactionStatus.DONE }
+        });
+        console.log(`[Auto-Accept] Transaction ID ${id} has been automatically approved.`);
+      } catch (err) {
+        console.error(`[Auto-Accept] Failed to auto-approve ID ${id}:`, err);
+      }
+    }, 5000);
+
+    return updatedTx;
   }
 
   async statusTransaction(
@@ -145,6 +174,7 @@ export class TransactionService {
         throw new ApiError("Invalid state", 400);
       }
 
+      // ACCEPT
       if (action === "ACCEPT") {
         return tx.transaction.update({
           where: { id },
@@ -152,6 +182,7 @@ export class TransactionService {
         });
       }
 
+      // REJECT → rollback everything
       if (action === "REJECT") {
         await tx.event.update({
           where: { id: transaction.eventId },
@@ -162,6 +193,7 @@ export class TransactionService {
           },
         });
 
+        // return points
         if (transaction.pointsUsed > 0) {
           await tx.user.update({
             where: { id: transaction.userId },

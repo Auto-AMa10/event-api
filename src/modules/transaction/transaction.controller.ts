@@ -1,6 +1,5 @@
 import { NextFunction, Request, Response } from "express";
 import { TransactionService } from "./transaction.service.js";
-import { AuthRequest } from "../../utils/auth-middleware.js";
 
 export class TransactionController {
   constructor(private transactionService: TransactionService) {}

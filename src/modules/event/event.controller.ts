@@ -1,6 +1,4 @@
-import { Request, Response, NextFunction } from "express";
-import { EventService } from "./event.service.js";
-import { AuthRequest } from "../../utils/auth-middleware.js";
+import { NextFunction, Request, Response } from "express";
 import { ApiError } from "../../utils/api-error.js";
 import { BookEventDTO } from "./dto/book-event.dto.js";
 import { plainToInstance } from "class-transformer";
@@ -54,7 +52,7 @@ createEvent = async (req: Request, res: Response) => {
   getEventBySlug = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const event = await this.eventService.getEventByslug(
-        Number(req.params.id),
+        req.params.id as string,
       );
       res.status(200).json({ data: event });
     } catch (err) {

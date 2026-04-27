@@ -10,7 +10,7 @@ export const authMiddleware = (req: AuthRequest, res: Response, next: NextFuncti
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith("Bearer ")) {
     return next(new ApiError("Unauthorized", 401));
-  }
+  } 
 
   const token = authHeader.split(" ")[1];
   try {

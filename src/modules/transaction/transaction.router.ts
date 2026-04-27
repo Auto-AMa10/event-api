@@ -6,6 +6,7 @@ import { TransactionController } from "./transaction.controller.js";
 
 export class TransactionRouter {
   private router: Router;
+  private app!: Express;
 
   constructor(
     private transactionController: TransactionController,
