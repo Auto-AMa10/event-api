@@ -1,5 +1,6 @@
-import { Router, Express } from "express";
+import { Router } from "express";
 import { AuthMiddleware } from "../../middlewares/auth.middleware.js";
+import { UploadMiddleware } from "../../middlewares/upload.middleware.js";
 import { ValidationMiddleware } from "../../middlewares/validation.middleware.js";
 import { TransactionController } from "./transaction.controller.js";
 
@@ -11,52 +12,67 @@ export class TransactionRouter {
     private transactionController: TransactionController,
     private authMiddleware: AuthMiddleware,
     private validationMiddleware: ValidationMiddleware,
+    private uploadMiddleware: UploadMiddleware,
   ) {
     this.router = Router();
     this.initializeRoutes();
   }
 
   private initializeRoutes() {
+    // checkout
     this.router.post(
       "/checkout",
       this.authMiddleware.verifyToken(process.env.JWT_SECRET!),
       this.transactionController.checkout,
     );
 
-    this.router.post(
-      "/:id/upload-proof",
+    // upload payment proof (FILE UPLOAD REQUIRED)
+    this.router.put(
+      "/:id/proof",
       this.authMiddleware.verifyToken(process.env.JWT_SECRET!),
+      this.uploadMiddleware.upload().single("proof"),
       this.transactionController.uploadProof,
     );
 
+    // organizer process transaction
     this.router.patch(
-      "/:id/process",
+      "/:id/status",
       this.authMiddleware.verifyToken(process.env.JWT_SECRET!),
       this.authMiddleware.verifyRole(["ORGANIZER"]),
-      this.transactionController.processTransaction,
+      this.transactionController.statusTransaction,
     );
 
+    // get my transactions
     this.router.get(
       "/me",
       this.authMiddleware.verifyToken(process.env.JWT_SECRET!),
       this.transactionController.getMyTransactions,
     );
 
+    // get transaction by id
     this.router.get(
       "/:id",
       this.authMiddleware.verifyToken(process.env.JWT_SECRET!),
       this.transactionController.getTransactionById,
     );
-    this.router.get("/my", authMiddleware, this.transactionController.getMyTransactions);
-    this.router.get("/pending-organizer", authMiddleware, organizerMiddleware, this.transactionController.getPendingForOrganizer);
-    this.router.get("/:id", authMiddleware, this.transactionController.getById);
-    this.router.post("/checkout", authMiddleware, this.transactionController.checkout);
-    this.router.put("/:id/proof", authMiddleware, this.transactionController.uploadProof);
-    this.router.put("/:id/status", authMiddleware, organizerMiddleware, this.transactionController.processTransaction);
-    this.router.delete("/:id", authMiddleware, this.transactionController.delete);
+
+    // organizer pending transactions
+    this.router.get(
+      "/organizer/pending",
+      this.authMiddleware.verifyToken(process.env.JWT_SECRET!),
+      this.authMiddleware.verifyRole(["ORGANIZER"]),
+      this.transactionController.getPendingForOrganizer,
+    );
+
+    // delete transaction
+    this.router.delete(
+      "/:id",
+      this.authMiddleware.verifyToken(process.env.JWT_SECRET!),
+      this.transactionController.delete,
+    );
   }
 
-  public getRouter() {
+  public getRouter(): Router {
     return this.router;
   }
 }

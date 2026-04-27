@@ -4,13 +4,10 @@ import { TransactionService } from "./transaction.service.js";
 export class TransactionController {
   constructor(private transactionService: TransactionService) {}
 
-  checkout = async (req: Request, res: Response, next: NextFunction,) => {
+  checkout = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const userId = res.locals.user.id;
-      const result = await this.transactionService.checkout(
-        userId,
-        req.body,
-      );
+      const result = await this.transactionService.checkout(userId, req.body);
 
       res.status(201).json({
         message: "Checkout successful",
@@ -21,13 +18,22 @@ export class TransactionController {
     }
   };
 
-  uploadProof = async (req: Request, res: Response, next: NextFunction,) => {
+  uploadProof = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const userId = res.locals.user.id;
+
+      const file = req.file;
+
+      if (!file) {
+        return res.status(400).json({
+          message: "payment proof file is required",
+        });
+      }
+
       const result = await this.transactionService.uploadProof(
         Number(req.params.id),
         userId,
-        req.body.paymentProof,
+        file,
       );
 
       res.status(200).json({
@@ -39,10 +45,14 @@ export class TransactionController {
     }
   };
 
-  processTransaction = async (req: Request, res: Response,next: NextFunction,) => {
+  statusTransaction = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) => {
     try {
       const organizerId = res.locals.user.id;
-      const result = await this.transactionService.processStatus(
+      const result = await this.transactionService.statusTransaction(
         Number(req.params.id),
         req.body.action,
         organizerId,
@@ -57,7 +67,11 @@ export class TransactionController {
     }
   };
 
-  getMyTransactions = async (req: Request, res: Response,next: NextFunction,) => {
+  getMyTransactions = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) => {
     try {
       const userId = res.locals.user.id;
       const result = await this.transactionService.getMyTransactions(userId);
@@ -71,7 +85,11 @@ export class TransactionController {
     }
   };
 
-  getTransactionById = async (req: Request, res: Response,next: NextFunction,) => {
+  getTransactionById = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) => {
     try {
       const userId = res.locals.user.id;
       const result = await this.transactionService.getTransactionById(
@@ -87,9 +105,15 @@ export class TransactionController {
     }
   };
 
-  getPendingForOrganizer = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  getPendingForOrganizer = async (
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction,
+  ) => {
     try {
-      const transactions = await this.transactionService.getPendingForOrganizer(Number(req.user.id));
+      const transactions = await this.transactionService.getPendingForOrganizer(
+        Number(req.user.id),
+      );
       res.status(200).json({ data: transactions });
     } catch (err) {
       next(err);
@@ -97,7 +121,10 @@ export class TransactionController {
   };
   delete = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
-      await this.transactionService.deleteTransaction(Number(req.params.id), Number(req.user.id));
+      await this.transactionService.deleteTransaction(
+        Number(req.params.id),
+        Number(req.user.id),
+      );
       res.status(200).json({ message: "Transaction deleted permanently" });
     } catch (err) {
       next(err);

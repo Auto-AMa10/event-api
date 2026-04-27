@@ -40,55 +40,6 @@ export class EventService {
     return { message: "Event Succsessfully created" };
   }
 
-  async bookEvent(data: BookEventDTO, userId: number) {
-    const existing = await this.prisma.booking.findUnique({
-      where: {
-        userId_eventId: {
-          userId,
-          eventId: data.eventId,
-        },
-      },
-    });
-
-    if (existing) {
-      throw new ApiError("You already booked this event", 400);
-    }
-
-    const event = await this.prisma.event.findUnique({
-      where: { id: data.eventId },
-    });
-
-    if (!event) {
-      throw new ApiError("Event not found", 404);
-    }
-
-    const updatedEvent = await this.prisma.event.updateMany({
-      where: {
-        id: data.eventId,
-        availableSeats: { gt: 0 },
-      },
-      data: {
-        availableSeats: {
-          decrement: 1,
-        },
-      },
-    });
-
-    if (updatedEvent.count === 0) {
-      throw new ApiError("No seats available", 400);
-    }
-
-    const expiresAt = new Date(Date.now() + 1000 * 60 * 15); // 15 min hold
-
-    await this.prisma.booking.create({
-      data: {
-        eventId: data.eventId,
-        userId,
-        expiresAt,
-        status: "RESERVED",
-      },
-    });
-
   async getDashboardStats(organizerId: number) {
     const revenueAggregation = await this.prisma.transaction.aggregate({
       _sum: { totalPrice: true },
@@ -108,23 +59,28 @@ export class EventService {
     startOfDay.setHours(0, 0, 0, 0);
     const ticketsSoldAggregation = await this.prisma.transaction.aggregate({
       _sum: { qty: true },
-      where: { event: { organizerId }, status: "DONE", updatedAt: { gte: startOfDay } },
+      where: {
+        event: { organizerId },
+        status: "DONE",
+        updatedAt: { gte: startOfDay },
+      },
     });
     const ticketsSoldToday = ticketsSoldAggregation._sum.qty || 0;
 
     const pageViews = 5890; // Mocked page views for now
 
-    const chartData: { name: string; revenue: number; dateString: string }[] = [];
+    const chartData: { name: string; revenue: number; dateString: string }[] =
+      [];
     const today = new Date();
     const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    
+
     for (let i = 6; i >= 0; i--) {
       const d = new Date(today);
       d.setDate(d.getDate() - i);
       chartData.push({
         name: days[d.getDay()],
         revenue: 0,
-        dateString: d.toISOString().split("T")[0]
+        dateString: d.toISOString().split("T")[0],
       });
     }
 
@@ -133,13 +89,17 @@ export class EventService {
     pastWeekDate.setHours(0, 0, 0, 0);
 
     const txs = await this.prisma.transaction.findMany({
-      where: { event: { organizerId }, status: "DONE", updatedAt: { gte: pastWeekDate } },
-      select: { totalPrice: true, updatedAt: true }
+      where: {
+        event: { organizerId },
+        status: "DONE",
+        updatedAt: { gte: pastWeekDate },
+      },
+      select: { totalPrice: true, updatedAt: true },
     });
 
-    txs.forEach(tx => {
+    txs.forEach((tx) => {
       const dateString = tx.updatedAt.toISOString().split("T")[0];
-      const match = chartData.find(c => c.dateString === dateString);
+      const match = chartData.find((c) => c.dateString === dateString);
       if (match) {
         match.revenue += tx.totalPrice;
       }
@@ -154,10 +114,6 @@ export class EventService {
       chartData,
     };
   }
-
-  async getEvents(query: any) {
-    const { search, category, location } = query;
-    const where: Prisma.EventWhereInput = {};
 
   async getEvents(query: GetEventsDTO) {
     const { page, take, category, location, sortBy, sortOrder } = query;

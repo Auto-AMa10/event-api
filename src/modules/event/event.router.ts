@@ -8,7 +8,6 @@ import { BookEventDTO } from "./dto/book-event.dto.js";
 
 export class EventRouter {
   private router: Router;
-  private app!: Express;
 
   constructor(
     private eventController: EventController,
@@ -22,13 +21,16 @@ export class EventRouter {
 
   private initializeRoutes() {
     this.router.get("/", this.eventController.getEvents);
+
     this.router.get(
       "/dashboard/stats",
       this.authMiddleware.verifyToken(process.env.JWT_SECRET!),
       this.authMiddleware.verifyRole(["ORGANIZER"]),
       this.eventController.getDashboardStats,
     );
+
     this.router.get("/:id", this.eventController.getEventBySlug);
+
     this.router.post(
       "/",
       this.authMiddleware.verifyToken(process.env.JWT_SECRET!),
@@ -41,7 +43,7 @@ export class EventRouter {
     );
   }
 
-  public getRouter() {
+  public getRouter(): Router {
     return this.router;
   }
 }
